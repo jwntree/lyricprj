@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="songMapper">
+	<select id="songList" resultType="com.co.lyric.vo.SongVO">
+	    <include refid="pagingHeader"></include>
+		select 
+		song_id,title,album,artist,year,genre,image_url,lyric_id 
+		from song
+		<!-- WHERE절을 include 태그로 삽입 -->
+    	<include refid="search"></include>
+		order by song_id desc
+		<include refid="pagingFooter"></include>
+	</select>
+	
+	
+	<select id="songView" resultType="com.co.lyric.vo.SongVO">
+		select 
+		song_id,title,album,artist,year,genre,image_url,lyric_id 
+		from song
+		where song_id=#{songId}
+		order by song_id
+	</select>
+	
+	<insert id="insertSong"  useGeneratedKeys="true" keyProperty="songId">
+		INSERT into song 
+		(title,album,artist,year,genre,image_url)
+		values
+		(#{title},#{album},#{artist},#{year},#{genre},#{imageUrl})
+	</insert>
+	
+	<update id="updateSong">
+        UPDATE song
+        SET
+            title = #{title},
+            album = #{album},
+            artist = #{artist},
+            year = #{year},
+            genre = #{genre},
+            image_url = #{imageUrl}     
+        WHERE
+            song_id = #{songId}
+    </update>
+    
+    <update id="updateSongImage">
+        UPDATE song
+        SET
+            image_url = #{imageUrl}          
+        WHERE
+            song_id = #{songId}  
+    </update>
+    
+    <update id="updateSongLyric">
+        UPDATE song
+        SET
+            lyric_id = #{lyricId}       
+        WHERE
+            song_id = #{songId}  
+    </update>
+    
+    <delete id="deleteSong">
+    delete from song
+    where song_id = #{songId}
+    </delete>
+   
+   
+   <!-- 페이징 sql -->
+	<sql id="pagingHeader">
+    SELECT * FROM (
+        SELECT row_number() OVER (ORDER BY (SELECT 1)) AS rn, A.* FROM (
+	</sql>
+	<sql id="pagingFooter">
+        ) as A
+    )as c WHERE rn BETWEEN #{start} AND #{end}
+	</sql>
+   
+    <!-- 게시글 레코드 갯수 -->
+	<select id="countArticle" resultType="int">
+    SELECT COUNT(*) FROM song
+    <!-- WHERE절을 include 태그로 삽입 -->
+    <include refid="search"></include>
+	</select>
+	
+	<sql id="search">
+	<choose>
+		<!-- 전체 검색이 아닐 경우  -->
+		<when test="searchOption == 'title' || searchOption == 'album' ||  searchOption == 'artist'">
+		where ${searchOption} like '%'||#{keyword}||'%'
+		</when>
+		<!-- 그외의 경우 -->
+		<otherwise>
+		    where title like '%'||#{keyword}||'%'
+            or album like '%'||#{keyword}||'%'
+            or artist like '%'||#{keyword}||'%'
+    	</otherwise>
+	</choose>
+	</sql>
+	
+	
+	<select id="getSongIdByLyricId" resultType="int">
+		select 
+		song_id
+		from song
+		where lyric_id=#{lyricId}
+	</select>
+	
+	
+	<select id="selectHashToSong" resultType="int">
+		select 
+		hash,song_id
+		from hash_to_song
+		where hash=#{hash}
+	</select>
+	
+	<!-- 곡이 이미 있을경우 넣지 않아야 함. 사용자에게 적절한 피드백 제공 필요(ex. 이미 서버에 존재하는 곡입니다.) -->
+	<insert id="insertHashToSong"  useGeneratedKeys="true" keyProperty="songId">
+	insert into hash_to_song(hash,song_id) 
+		values(#{hash},#{songId}) 
+	ON CONFLICT(hash) DO NOTHING;
+	</insert>
+	
+	<update id="updateHashToSong">
+        UPDATE hash_to_song
+        SET
+            hash = #{hash},
+            songId = #{songId},   
+        WHERE
+            hash = #{hash}
+    </update>
+    
+    
+    <!-- 일정수준 이상의 일치율인 곡들을 가져오기 위한 sql 아직 테스트 되지 않음-->
+    <select id="selectsimilarHash" resultType="int">
+    SELECT a.song_id, count(*) cnt
+	FROM  hash_to_song_segment
+	INNER JOIN 
+	(select n/2+1 as seg_idx, substring(#{hash} from n for 2) as seg, 1 as song_id,1 as org_hash_idx from generate_series(1, length( #{hash} ), 2) n) AS a
+	ON hash_to_song_segment.seg_idx = a.seg_idx and hash_to_song_segment.seg = a.seg
+	group by a.song_id order by cnt desc;
+	</select>
+    
+    <select id="selectMD5ToSong" resultType="int">
+		select 
+		hash,song_id
+		from md5_to_song
+		where md5=#{md5}
+	</select>
+    
+    <!-- 곡이 이미 있을경우 업데이트 -->
+    <insert id="insertMD5ToSong"  useGeneratedKeys="true" keyProperty="songId">
+	insert into md5_to_song(hash,song_id) 
+		values(#{md5},#{songId}) 
+	ON CONFLICT(md5) DO UPDATE SET song_id=excluded.song_id;
+	</insert>
+	
+	<update id="updateMD5ToSong">
+        UPDATE md5_to_song
+        SET
+            md5 = #{md5},
+            songId = #{songId},   
+        WHERE
+            md5 = #{md5}
+    </update>
+	
+	
+</mapper>

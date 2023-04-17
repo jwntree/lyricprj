@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="lyricMapper">
+	
+	<insert id="insertLyric" useGeneratedKeys="true" keyProperty="lyricId">
+		INSERT into lyric 
+		(submitter_name,submitter_email,texts)
+		values
+		(#{submitterName},#{submitterEmail},#{texts})
+	</insert>
+	
+	<select id="LyricList" resultType="com.co.lyric.vo.LyricVO">
+		select 
+		lyric_id,submitter_name,submitter_email,reg_date,texts 
+		from lyric
+		order by lyric_id
+	</select>
+	
+	<select id="LyricView" resultType="com.co.lyric.vo.LyricVO">
+		select 
+		lyric_id,submitter_name,submitter_email,reg_date,texts 
+		from lyric
+		WHERE
+            lyric_id = #{lyricId}
+        order by lyric_id
+	</select>
+	
+	<update id="updateLyric">
+        UPDATE lyric
+        SET
+            submitter_name = #{submitterName},
+            submitter_email = #{submitterEmail},
+            texts = #{texts},
+            reg_date = now() at time zone 'utc'
+        WHERE
+            lyric_id = #{lyricId}  
+    </update>
+    
+    <delete id="deleteLyric">
+    delete from lyric
+    where lyric_id = #{lyricId}
+    </delete>
+	
+	<select id="LyricHistory" resultType="com.co.lyric.vo.LyricHistroyVO">
+		<include refid="pagingHeader"></include>
+		select 
+		rev_id,lyric_id,submitter_name,submitter_email,reg_date,texts 
+		from lyric_revision
+		WHERE
+            lyric_id = #{lyricId}
+        order by rev_id desc
+        <include refid="pagingFooter"></include>
+	</select>
+	
+	
+	<select id="LyricHistoryView" resultType="com.co.lyric.vo.LyricHistroyVO">
+		select 
+		rev_id,lyric_id,submitter_name,submitter_email,reg_date,texts 
+		from lyric_revision
+		WHERE
+            rev_id = #{revId}
+	</select>
+	
+	
+	<!-- 현재 문제점: submitter_name,submitter_email을 사용자부터 받아야 함 -->
+	<!-- 롤백할때 몇번 revision에서 롤백했는지 비고란에 기록되어야 될듯 -->
+	<update id="restoreLyric">
+	    UPDATE lyric
+        SET
+            submitter_name = subquery.submitter_name,
+            submitter_email = subquery.submitter_email,
+            texts = subquery.texts
+       FROM (SELECT submitter_name,submitter_email, texts FROM lyric_revision where rev_id=#{revId}) AS subquery         
+       WHERE
+            lyric_id = #{lyricId};  
+    </update>
+    
+	
+	<!-- 페이징 sql -->
+	<sql id="pagingHeader">
+    SELECT * FROM (
+        SELECT row_number() OVER (ORDER BY (SELECT 1)) AS rn, A.* FROM (
+	</sql>
+	<sql id="pagingFooter">
+        ) as A
+    )as c WHERE rn BETWEEN #{start} AND #{end}
+	</sql>
+	
+	<!-- 가사 레코드 갯수 -->
+	<select id="CountHistoryArticle" resultType="int">
+    SELECT COUNT(*) FROM lyric_revision
+    WHERE lyric_id = #{lyricId} 
+	</select>
+	
+</mapper>

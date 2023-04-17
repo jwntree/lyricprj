@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+   <settings>
+  	<!-- 자동으로 카멜케이스 규칙으로 변환 -->
+    <setting name="mapUnderscoreToCamelCase" value="true"/>
+    <!-- 쿼리 결과 필드가 null인 경우, 누락이 되서 나오지 않게 설정-->
+    <setting name="callSettersOnNulls" value="true"/>
+   	<!-- NULL 허용 -->
+   	<setting name="jdbcTypeForNull" value="NULL" />
+ </settings> 
+</configuration>
